@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 class Dataset_MTS(Dataset):
     def __init__(self, root_path, data_path='ETTh1.csv', flag='train', size=None, 
-                  data_split = [0.7, 0.1, 0.2], scale=True, scale_statistic=None):
+                  data_split = [0.7, 0.1, 0.2], scale=True, scale_statistic=None, enable_data_cleaning=False):
         # size [seq_len, label_len, pred_len]
         # info
         self.in_len = size[0]
@@ -24,7 +24,7 @@ class Dataset_MTS(Dataset):
         
         self.scale = scale
         #self.inverse = inverse
-        
+        self.enable_data_cleaning = enable_data_cleaning
         self.root_path = root_path
         self.data_path = data_path
         self.data_split = data_split
@@ -32,8 +32,13 @@ class Dataset_MTS(Dataset):
         self.__read_data__()
 
     def __read_data__(self):
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
+        # Determine file path based on enable_data_cleaning
+        if self.enable_data_cleaning:
+            file_path = os.path.join(self.root_path, self.data_path.replace('.csv', '_clean.csv'))
+        else:
+            file_path = os.path.join(self.root_path, self.data_path)
+        df_raw = pd.read_csv(file_path)
+
         if (self.data_split[0] > 1):
             train_num = self.data_split[0]; val_num = self.data_split[1]; test_num = self.data_split[2];
         else:
