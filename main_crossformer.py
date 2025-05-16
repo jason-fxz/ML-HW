@@ -44,7 +44,7 @@ parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple g
 parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of multile gpus')
 
 parser.add_argument('--tag', type=str, default='',help='tag of the experiment')
-
+parser.add_argument('--enable_data_cleaning', type=bool, help='whether to enable data cleaning', default=False)
 
 args = parser.parse_args()
 

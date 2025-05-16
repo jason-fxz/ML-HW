@@ -59,6 +59,7 @@ class Exp_crossformer(Exp_Basic):
             flag=flag,
             size=[args.in_len, args.out_len],  
             data_split = args.data_split,
+            enable_data_cleaning= args.enable_data_cleaning,
         )
 
         print(flag, len(data_set))
