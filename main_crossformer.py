@@ -43,6 +43,9 @@ parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
 parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of multile gpus')
 
+parser.add_argument('--tag', type=str, default='',help='tag of the experiment')
+
+
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
@@ -77,7 +80,7 @@ Exp = Exp_crossformer
 
 for ii in range(args.itr):
     # setting record of experiments
-    setting = 'Crossformer_{}_il{}_ol{}_sl{}_win{}_fa{}_dm{}_nh{}_el{}_itr{}'.format(args.data, 
+    setting = 'Crossformer_{}_<{}>_il{}_ol{}_sl{}_win{}_fa{}_dm{}_nh{}_el{}_itr{}'.format(args.data, args.tag, 
                 args.in_len, args.out_len, args.seg_len, args.win_size, args.factor,
                 args.d_model, args.n_heads, args.e_layers, ii)
 
