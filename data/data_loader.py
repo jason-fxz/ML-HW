@@ -33,11 +33,13 @@ class Dataset_MTS(Dataset):
 
     def __read_data__(self):
         # Determine file path based on enable_data_cleaning
-        if self.enable_data_cleaning:
-            file_path = os.path.join(self.root_path, self.data_path.replace('.csv', '_clean.csv'))
-        else:
-            file_path = os.path.join(self.root_path, self.data_path)
+        file_path = os.path.join(self.root_path, self.data_path)
         df_raw = pd.read_csv(file_path)
+
+        dirty_cols = None
+        if self.enable_data_cleaning:
+            dirty_cols = df_raw['dirty'].values
+            df_raw = df_raw.drop(columns=['dirty'])
 
         if (self.data_split[0] > 1):
             train_num = self.data_split[0]; val_num = self.data_split[1]; test_num = self.data_split[2];
@@ -67,20 +69,27 @@ class Dataset_MTS(Dataset):
 
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
-    
+
+        self.data_xs = []
+        self.data_ys = []
+        self.length = 0
+        for i in range(len(self.data_x) - self.in_len - self.out_len + 1):
+            seq_x = self.data_x[i:i + self.in_len]
+            seq_y = self.data_y[i + self.in_len:i + self.in_len + self.out_len]
+            if self.enable_data_cleaning:
+                if np.sum(dirty_cols[i:i + self.in_len + self.out_len]) > 0:
+                    continue
+            self.data_xs.append(seq_x)
+            self.data_ys.append(seq_y)
+            self.length += 1
+        print("Data length: ", self.length)
+
     def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.in_len
-        r_begin = s_end
-        r_end = r_begin + self.out_len
+        return self.data_xs[index], self.data_ys[index]
 
-        seq_x = self.data_x[s_begin:s_end]
-        seq_y = self.data_y[r_begin:r_end]
-
-        return seq_x, seq_y
     
     def __len__(self):
-        return len(self.data_x) - self.in_len- self.out_len + 1
+        return self.length
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
