@@ -58,7 +58,7 @@ class scale_block(nn.Module):
 
         for i in range(depth):
             self.encode_layers.append(TwoStageAttentionLayer(seg_num, factor, d_model, n_heads, \
-                                                        d_ff, dropout))
+                                                        d_ff, dropout, True))
     
     def forward(self, x):
         _, ts_dim, _, _ = x.shape
