@@ -226,6 +226,7 @@ class Exp_crossformer(Exp_Basic):
             data_split = args.data_split,
             scale = True,
             scale_statistic = args.scale_statistic,
+            enable_data_cleaning= args.enable_data_cleaning,
         )
 
         data_loader = DataLoader(
@@ -248,13 +249,24 @@ class Exp_crossformer(Exp_Basic):
                     data_set, batch_x, batch_y, inverse)
                 batch_size = pred.shape[0]
                 instance_num += batch_size
+                # print('batch_size:', batch_size)
+                # print('pred:', pred.shape) 
+
+                # batch_size, out_len, data_dim] => [batch_size, out_len, use_dim] 
+               
+                use_dim = 9
+                pred = pred[:, :, :use_dim]
+                true = true[:, :, :use_dim]
+
                 batch_metric = np.array(metric(pred.detach().cpu().numpy(), true.detach().cpu().numpy())) * batch_size
                 metrics_all.append(batch_metric)
                 if (save_pred):
                     preds.append(pred.detach().cpu().numpy())
                     trues.append(true.detach().cpu().numpy())
 
+        # print(metrics_all)
         metrics_all = np.stack(metrics_all, axis = 0)
+        # print(metrics_all)
         metrics_mean = metrics_all.sum(axis = 0) / instance_num
 
         # result save
@@ -271,5 +283,72 @@ class Exp_crossformer(Exp_Basic):
             trues = np.concatenate(trues, axis = 0)
             np.save(folder_path+'pred.npy', preds)
             np.save(folder_path+'true.npy', trues)
+            
+            # 添加可视化代码
+            try:
+                import matplotlib.pyplot as plt
+                
+                # 创建可视化文件夹
+                vis_folder = os.path.join(folder_path, 'visualization')
+                if not os.path.exists(vis_folder):
+                    os.makedirs(vis_folder)
+                
+                # 选择前5个样本和前16个维度进行可视化
+                sample_num = min(5, preds.shape[0])
+                dim_num = min(16, preds.shape[2])
+                
+                # 获取输入序列数据
+                inputs = []
+                with torch.no_grad():
+                    for i, (batch_x, _) in enumerate(data_loader):
+                        inputs.append(batch_x.detach().cpu().numpy())
+                        if len(inputs) * args.batch_size >= sample_num * preds.shape[0] // sample_num + sample_num:
+                            break
+                
+                inputs = np.concatenate(inputs, axis=0)
+                
+                for ii in range(sample_num):
+                    i = ii * preds.shape[0] // sample_num
+                    plt.figure(figsize=(25, 30))
+                    
+                    for j in range(dim_num):
+                        plt.subplot(dim_num, 1, j+1)
+                        
+                        # 绘制输入序列
+                        input_seq = inputs[i, :, j]
+                        x_input = np.arange(0, len(input_seq))
+                        plt.plot(x_input, input_seq, label='input', color='blue', marker='.')
+                        
+                        # 绘制真实值和预测值
+                        x_true = np.arange(len(input_seq), len(input_seq) + len(trues[i, :, j]))
+                        plt.plot(x_true, trues[i, :, j], label='true', color='green', marker='o')
+                        plt.plot(x_true, preds[i, :, j], label='pred', color='red', marker='*')
+                        
+                        # 添加垂直线分隔输入和输出
+                        plt.axvline(x=len(input_seq)-0.5, color='gray', linestyle='--')
+                        
+                        plt.legend()
+                        plt.title(f'sample {i+1}, dim {j+1}')
+                        plt.grid(True)
+                    
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(vis_folder, f'sample_{i+1}_with_input.png'))
+                    plt.close()
+                
+                # 绘制整体性能指标
+                plt.figure(figsize=(10, 6))
+                metrics_names = ['MAE', 'MSE', 'RMSE', 'MAPE', 'MSPE']
+                metrics_values = [mae, mse, rmse, mape, mspe]
+                
+                plt.bar(metrics_names, metrics_values)
+                plt.title('Overall Performance Metrics')
+                plt.savefig(os.path.join(vis_folder, 'metrics.png'))
+                plt.close()
+                
+                print(f"已保存可视化结果到 {vis_folder}")
+            except Exception as e:
+                print(f"可视化过程出现错误: {e}")
+                import traceback
+                traceback.print_exc()
 
         return mae, mse, rmse, mape, mspe
