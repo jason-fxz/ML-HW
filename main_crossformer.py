@@ -46,6 +46,7 @@ parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of
 parser.add_argument('--tag', type=str, default='',help='tag of the experiment')
 parser.add_argument('--enable_data_cleaning', type=bool, help='whether to enable data cleaning', default=False)
 
+parser.add_argument('--use_revin', action='store_true', help='use reversible instance normalization')
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False

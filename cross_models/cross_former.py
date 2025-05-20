@@ -7,19 +7,23 @@ from cross_models.cross_encoder import Encoder
 from cross_models.cross_decoder import Decoder
 from cross_models.attn import FullAttention, AttentionLayer, TwoStageAttentionLayer
 from cross_models.cross_embed import DSW_embedding
+from cross_models.RevIN import RevIN  # 导入 RevIN 模块
 
 from math import ceil
 
 class Crossformer(nn.Module):
     def __init__(self, data_dim, in_len, out_len, seg_len, win_size = 4,
                 factor=10, d_model=512, d_ff = 1024, n_heads=8, e_layers=3, 
-                dropout=0.0, baseline = False, device=torch.device('cuda:0')):
+                dropout=0.0, baseline = False, use_revin=False, device=torch.device('cuda:0')):
         super(Crossformer, self).__init__()
         self.data_dim = data_dim
         self.in_len = in_len
         self.out_len = out_len
         self.seg_len = seg_len
         self.merge_win = win_size
+        
+        # 添加 RevIN 参数
+        self.use_revin = use_revin
 
         self.baseline = baseline
 
@@ -34,6 +38,10 @@ class Crossformer(nn.Module):
         self.enc_value_embedding = DSW_embedding(seg_len, d_model)
         self.enc_pos_embedding = nn.Parameter(torch.randn(1, data_dim, (self.pad_in_len // seg_len), d_model))
         self.pre_norm = nn.LayerNorm(d_model)
+        
+        # 添加 RevIN 层
+        if self.use_revin:
+            self.revin = RevIN(num_features=data_dim)
 
         # Encoder
         self.encoder = Encoder(e_layers, win_size, d_model, n_heads, d_ff, block_depth = 1, \
@@ -52,6 +60,8 @@ class Crossformer(nn.Module):
         batch_size = x_seq.shape[0]
         if (self.in_len_add != 0):
             x_seq = torch.cat((x_seq[:, :1, :].expand(-1, self.in_len_add, -1), x_seq), dim = 1)
+        if (self.use_revin):
+            x_seq = self.revin(x_seq, 'norm')
 
         x_seq = self.enc_value_embedding(x_seq)
         x_seq += self.enc_pos_embedding
@@ -62,5 +72,7 @@ class Crossformer(nn.Module):
         dec_in = repeat(self.dec_pos_embedding, 'b ts_d l d -> (repeat b) ts_d l d', repeat = batch_size)
         predict_y = self.decoder(dec_in, enc_out)
 
+        if (self.use_revin):
+            predict_y = self.revin(predict_y, 'denorm')
 
         return base + predict_y[:, :self.out_len, :]

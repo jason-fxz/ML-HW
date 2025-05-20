@@ -4,6 +4,7 @@ from cross_models.cross_former import Crossformer
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
+from utils.aligner import ARAligner
 
 import numpy as np
 
@@ -39,6 +40,7 @@ class Exp_crossformer(Exp_Basic):
             self.args.e_layers,
             self.args.dropout, 
             self.args.baseline,
+            self.args.use_revin if hasattr(self.args, 'use_revin') else False,  # 添加 RevIN 参数
             self.device
         ).float()
         
@@ -253,10 +255,11 @@ class Exp_crossformer(Exp_Basic):
                 # print('pred:', pred.shape) 
 
                 # batch_size, out_len, data_dim] => [batch_size, out_len, use_dim] 
-               
-                use_dim = 9
-                pred = pred[:, :, :use_dim]
-                true = true[:, :, :use_dim]
+                # aligner = ARAligner(ratio=0.1, lags=5)
+                # pred = aligner.align(pred, batch_x)
+                # use_dim = 9
+                # pred = pred[:, :, :use_dim]
+                # true = true[:, :, :use_dim]
 
                 batch_metric = np.array(metric(pred.detach().cpu().numpy(), true.detach().cpu().numpy())) * batch_size
                 metrics_all.append(batch_metric)
