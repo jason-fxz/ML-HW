@@ -23,6 +23,8 @@ parser.add_argument('--save_pred', action='store_true', help='whether to save th
 parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 
+parser.add_argument('--enable_data_cleaning', action='store_true', help='enable data cleaning', default=False)
+
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
