@@ -2,6 +2,7 @@ import argparse
 import os
 import torch
 import pickle
+from utils.weekly_pattern_aligner import WeeklyPattern
 
 from cross_exp.exp_crossformer import Exp_crossformer
 from utils.tools import load_args, string_split
@@ -25,6 +26,7 @@ parser.add_argument('--gpu', type=int, default=0, help='gpu')
 
 parser.add_argument('--enable_data_cleaning', action='store_true', help='enable data cleaning', default=False)
 parser.add_argument('--use_revin', action='store_true', help='use reversible instance normalization')
+parser.add_argument('--use_weekly_pattern', action='store_true', help='use weekly pattern alignment')
 
 args = parser.parse_args()
 
@@ -42,6 +44,9 @@ args.e_layers = hyper_parameters['e_layers']; args.dropout = hyper_parameters['d
 exp = Exp_crossformer(args)
 model_dict = torch.load(os.path.join(args.checkpoint_dir, 'checkpoint.pth'), map_location='cpu')
 exp.model.load_state_dict(model_dict)
+if args.use_weekly_pattern:
+    exp.weekly_pattern_aligner = WeeklyPattern()
+    exp.weekly_pattern_aligner.load(os.path.join(args.checkpoint_dir, 'weekly_pattern.npz'))
 
 #load the data
 args.scale_statistic = pickle.load(open(os.path.join(args.checkpoint_dir, 'scale_statistic.pkl'), 'rb'))

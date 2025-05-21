@@ -182,6 +182,9 @@ class Exp_crossformer(Exp_Basic):
         self.model.load_state_dict(torch.load(best_model_path))
         state_dict = self.model.module.state_dict() if isinstance(self.model, DataParallel) else self.model.state_dict()
         torch.save(state_dict, path+'/'+'checkpoint.pth')
+        # save 
+        if self.args.use_weekly_pattern:
+            self.weekly_pattern_aligner.save(path + '/weekly_pattern.npz')
         
         return self.model
 
