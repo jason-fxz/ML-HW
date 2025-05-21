@@ -108,10 +108,17 @@ class Exp_crossformer(Exp_Basic):
             # fit on train data
             file_path = os.path.join(self.args.root_path, self.args.data_path)
             df_raw = pd.read_csv(file_path)
+            # remove the first column
+            df_raw = df_raw.iloc[:, 1:]
+            # scale
+            df_mean = df_raw.mean(axis=0)
+            df_std = df_raw.std(axis=0)
+            df_raw = (df_raw - df_mean) / df_std
+            # get train data
             train_num = int(len(df_raw) * self.args.data_split[0]) if self.args.data_split[0] < 1 else self.args.data_split[0]
             train_data = df_raw[:train_num]
             # to numpy
-            train_data = train_data.values[:, 1:]  # remove the first column
+            train_data = train_data.values
             train_data = train_data.astype(np.float32)
             self.weekly_pattern_aligner.fit(train_data)
 
