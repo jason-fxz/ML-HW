@@ -6,13 +6,14 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from utils.tools import StandardScaler
+from utils.weekly_pattern_aligner import WeeklyPattern
 
 import warnings
 warnings.filterwarnings('ignore')
 
 class Dataset_MTS(Dataset):
     def __init__(self, root_path, data_path='ETTh1.csv', flag='train', size=None, 
-                  data_split = [0.7, 0.1, 0.2], scale=True, scale_statistic=None, enable_data_cleaning=False):
+                  data_split = [0.7, 0.1, 0.2], scale=True, scale_statistic=None, enable_data_cleaning=False, weekly_pattern_aligner : WeeklyPattern=None):
         # size [seq_len, label_len, pred_len]
         # info
         self.in_len = size[0]
@@ -29,6 +30,7 @@ class Dataset_MTS(Dataset):
         self.data_path = data_path
         self.data_split = data_split
         self.scale_statistic = scale_statistic
+        self.weekly_pattern_aligner = weekly_pattern_aligner
         self.__read_data__()
 
     def __read_data__(self):
@@ -55,6 +57,7 @@ class Dataset_MTS(Dataset):
         
         cols_data = df_raw.columns[1:]
         df_data = df_raw[cols_data]
+        index = np.arange(len(df_data))
 
         if self.scale:
             if self.scale_statistic is None:
@@ -69,23 +72,33 @@ class Dataset_MTS(Dataset):
 
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
+        self.index = index[border1:border2]
 
         self.data_xs = []
         self.data_ys = []
+        self.data_pxs = []
+        self.data_pys = []
         self.length = 0
         for i in range(len(self.data_x) - self.in_len - self.out_len + 1):
             seq_x = self.data_x[i:i + self.in_len]
             seq_y = self.data_y[i + self.in_len:i + self.in_len + self.out_len]
+            s_i, s_j, s_k = self.index[i], self.index[i+self.in_len], self.index[i + self.in_len + self.out_len - 1] + 1
             if self.enable_data_cleaning:
                 if np.sum(dirty_cols[i:i + self.in_len + self.out_len]) > 0:
                     continue
+            if self.weekly_pattern_aligner is not None:
+                self.data_pxs.append(self.weekly_pattern_aligner.get_pattern(s_i, s_j))
+                self.data_pys.append(self.weekly_pattern_aligner.get_pattern(s_j, s_k))
             self.data_xs.append(seq_x)
             self.data_ys.append(seq_y)
             self.length += 1
         print("Data length: ", self.length)
 
     def __getitem__(self, index):
-        return self.data_xs[index], self.data_ys[index]
+        if self.weekly_pattern_aligner is not None:
+            return self.data_xs[index], self.data_ys[index], self.data_pxs[index], self.data_pys[index]
+        else:
+            return self.data_xs[index], self.data_ys[index], None, None
 
     
     def __len__(self):

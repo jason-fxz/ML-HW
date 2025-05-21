@@ -47,6 +47,8 @@ parser.add_argument('--tag', type=str, default='',help='tag of the experiment')
 parser.add_argument('--enable_data_cleaning', action='store_true', help='whether to enable data cleaning', default=False)
 
 parser.add_argument('--use_revin', action='store_true', help='use reversible instance normalization')
+parser.add_argument('--use_weekly_pattern', action='store_true', help='use weekly pattern alignment')
+
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False

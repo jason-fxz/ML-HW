@@ -5,6 +5,8 @@ from cross_models.cross_former import Crossformer
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 from utils.aligner import ARAligner
+from utils.weekly_pattern_aligner import WeeklyPattern
+import pandas as pd
 
 import numpy as np
 
@@ -62,6 +64,7 @@ class Exp_crossformer(Exp_Basic):
             size=[args.in_len, args.out_len],  
             data_split = args.data_split,
             enable_data_cleaning= args.enable_data_cleaning,
+            weekly_pattern_aligner = self.weekly_pattern_aligner if args.use_weekly_pattern else None,
         )
 
         print(flag, len(data_set))
@@ -86,7 +89,10 @@ class Exp_crossformer(Exp_Basic):
         self.model.eval()
         total_loss = []
         with torch.no_grad():
-            for i, (batch_x,batch_y) in enumerate(vali_loader):
+            for i, (batch_x,batch_y, pat_x, pat_y) in enumerate(vali_loader):
+                if self.args.use_weekly_pattern:
+                    batch_x = batch_x - pat_x
+                    batch_y = batch_y - pat_y
                 pred, true = self._process_one_batch(
                     vali_data, batch_x, batch_y)
                 loss = criterion(pred.detach().cpu(), true.detach().cpu())
@@ -94,8 +100,21 @@ class Exp_crossformer(Exp_Basic):
         total_loss = np.average(total_loss)
         self.model.train()
         return total_loss
+    
 
     def train(self, setting):
+        if hasattr(self.args, 'use_weekly_pattern') and self.args.use_weekly_pattern:
+            self.weekly_pattern_aligner = WeeklyPattern(7 * 24, normalize_by_week=False)
+            # fit on train data
+            file_path = os.path.join(self.args.root_path, self.args.data_path)
+            df_raw = pd.read_csv(file_path)
+            train_num = int(len(df_raw) * self.args.data_split[0]) if self.args.data_split[0] < 1 else self.args.data_split[0]
+            train_data = df_raw[:train_num]
+            # to numpy
+            train_data = train_data.values[:, 1:]  # remove the first column
+            train_data = train_data.astype(np.float32)
+            self.weekly_pattern_aligner.fit(train_data)
+
         train_data, train_loader = self._get_data(flag = 'train')
         vali_data, vali_loader = self._get_data(flag = 'val')
         test_data, test_loader = self._get_data(flag = 'test')
@@ -122,9 +141,12 @@ class Exp_crossformer(Exp_Basic):
             
             self.model.train()
             epoch_time = time.time()
-            for i, (batch_x,batch_y) in enumerate(train_loader):
+            for i, (batch_x,batch_y,pat_x,pat_y) in enumerate(train_loader):
                 iter_count += 1
-                
+                if self.args.use_weekly_pattern:
+                    batch_x = batch_x - pat_x
+                    batch_y = batch_y - pat_y
+
                 model_optim.zero_grad()
                 pred, true = self._process_one_batch(
                     train_data, batch_x, batch_y)
@@ -174,7 +196,10 @@ class Exp_crossformer(Exp_Basic):
         instance_num = 0
         
         with torch.no_grad():
-            for i, (batch_x,batch_y) in enumerate(test_loader):
+            for i, (batch_x,batch_y, pat_x, pat_y) in enumerate(test_loader):
+                if self.args.use_weekly_pattern:
+                    batch_x = batch_x - pat_x
+                    batch_y = batch_y - pat_y
                 pred, true = self._process_one_batch(
                     test_data, batch_x, batch_y, inverse)
                 batch_size = pred.shape[0]
@@ -246,9 +271,16 @@ class Exp_crossformer(Exp_Basic):
         instance_num = 0
         
         with torch.no_grad():
-            for i, (batch_x,batch_y) in enumerate(data_loader):
+            for i, (batch_x,batch_y, pat_x, pat_y) in enumerate(data_loader):
+                if self.args.use_weekly_pattern:
+                    batch_x = batch_x - pat_x
+                    batch_y = batch_y - pat_y
                 pred, true = self._process_one_batch(
                     data_set, batch_x, batch_y, inverse)
+                if self.args.use_weekly_pattern:
+                    # add back weekly pattern for visualization
+                    pred = pred + pat_y 
+                    true = true + pat_y 
                 batch_size = pred.shape[0]
                 instance_num += batch_size
                 # print('batch_size:', batch_size)
