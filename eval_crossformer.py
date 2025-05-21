@@ -24,6 +24,7 @@ parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 
 parser.add_argument('--enable_data_cleaning', action='store_true', help='enable data cleaning', default=False)
+parser.add_argument('--use_revin', action='store_true', help='use reversible instance normalization')
 
 args = parser.parse_args()
 

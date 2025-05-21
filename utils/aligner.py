@@ -49,3 +49,25 @@ class ARAligner:
                     print(f"[ARAligner] Warning: AR failed on batch {b}, dim {d}. Error: {e}")
 
         return aligned.to(y_pred.device)
+    
+
+def shift_prediction_to_recent_input(y_pred, input_seq, ratio=0.1):
+    """
+    将预测 y_pred 的均值对齐到 input_seq 的最后 ratio 部分的均值。
+    """
+    device = y_pred.device  # 保持在同一设备
+
+    # 取 input_seq 最后部分
+    tail_len = int(input_seq.size(1) * ratio)
+    input_tail = input_seq[:, -tail_len:, :].to(device)
+
+    # 计算均值
+    input_tail_mean = input_tail.mean(dim=1, keepdim=True)  # [B, 1, D]
+    pred_mean = y_pred.mean(dim=1, keepdim=True)            # [B, 1, D]
+
+    # 平移校正
+    offset = input_tail_mean - pred_mean
+    y_pred_shifted = y_pred + offset
+
+    return y_pred_shifted
+
