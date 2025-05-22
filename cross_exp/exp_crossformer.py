@@ -4,7 +4,7 @@ from cross_models.cross_former import Crossformer
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
-from utils.aligner import ARAligner
+import utils.aligner as aligner
 from utils.weekly_pattern_aligner import WeeklyPattern
 import pandas as pd
 
@@ -104,7 +104,7 @@ class Exp_crossformer(Exp_Basic):
 
     def train(self, setting):
         if hasattr(self.args, 'use_weekly_pattern') and self.args.use_weekly_pattern:
-            self.weekly_pattern_aligner = WeeklyPattern(7 * 24, normalize_by_week=False)
+            self.weekly_pattern_aligner = WeeklyPattern(7 * 24, normalize_by_week=True)
             # fit on train data
             file_path = os.path.join(self.args.root_path, self.args.data_path)
             df_raw = pd.read_csv(file_path)
@@ -264,6 +264,7 @@ class Exp_crossformer(Exp_Basic):
             scale = True,
             scale_statistic = args.scale_statistic,
             enable_data_cleaning= args.enable_data_cleaning,
+            weekly_pattern_aligner = self.weekly_pattern_aligner if args.use_weekly_pattern else None,
         )
 
         data_loader = DataLoader(
@@ -287,8 +288,11 @@ class Exp_crossformer(Exp_Basic):
                     batch_y = batch_y - pat_y
                 pred, true = self._process_one_batch(
                     data_set, batch_x, batch_y, inverse)
+                
                 if self.args.use_weekly_pattern:
                     # add back weekly pattern for visualization
+                    # print(self.device)
+                    pat_y = pat_y.to(self.device)
                     pred = pred + pat_y 
                     true = true + pat_y 
                 batch_size = pred.shape[0]
@@ -298,7 +302,7 @@ class Exp_crossformer(Exp_Basic):
 
                 # batch_size, out_len, data_dim] => [batch_size, out_len, use_dim] 
                 # aligner = ARAligner(ratio=0.1, lags=5)
-                # pred = aligner.align(pred, batch_x)
+                # pred = aligner.shift_prediction_to_recent_input(pred, batch_x)
                 # use_dim = 9
                 # pred = pred[:, :, :use_dim]
                 # true = true[:, :, :use_dim]
@@ -345,7 +349,7 @@ class Exp_crossformer(Exp_Basic):
                 # 获取输入序列数据
                 inputs = []
                 with torch.no_grad():
-                    for i, (batch_x, _) in enumerate(data_loader):
+                    for i, (batch_x, _, _, _) in enumerate(data_loader):
                         inputs.append(batch_x.detach().cpu().numpy())
                         if len(inputs) * args.batch_size >= sample_num * preds.shape[0] // sample_num + sample_num:
                             break

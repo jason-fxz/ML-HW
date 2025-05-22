@@ -87,8 +87,9 @@ class Dataset_MTS(Dataset):
                 if np.sum(dirty_cols[i:i + self.in_len + self.out_len]) > 0:
                     continue
             if self.weekly_pattern_aligner is not None:
-                self.data_pxs.append(self.weekly_pattern_aligner.get_pattern(s_i, s_j))
-                self.data_pys.append(self.weekly_pattern_aligner.get_pattern(s_j, s_k))
+                x_mean, x_std = seq_x.mean(axis=0), seq_x.std(axis=0)
+                self.data_pxs.append(self.weekly_pattern_aligner.get_pattern(s_i, s_j) * x_std + x_mean)
+                self.data_pys.append(self.weekly_pattern_aligner.get_pattern(s_j, s_k) * x_std + x_mean)
             self.data_xs.append(seq_x)
             self.data_ys.append(seq_y)
             self.length += 1
