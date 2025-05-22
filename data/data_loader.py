@@ -89,7 +89,7 @@ class Dataset_MTS(Dataset):
             if self.weekly_pattern_aligner is not None:
                 x_mean, x_std = seq_x.mean(axis=0), seq_x.std(axis=0)
                 self.data_pxs.append(self.weekly_pattern_aligner.get_pattern(s_i, s_j) * x_std + x_mean)
-                self.data_pys.append(self.weekly_pattern_aligner.get_pattern(s_j, s_k) * x_std + x_mean)
+                self.data_pys.append(self.weekly_pattern_aligner.get_pattern_with_input(seq_x, s_i, s_j, s_k))
             self.data_xs.append(seq_x)
             self.data_ys.append(seq_y)
             self.length += 1

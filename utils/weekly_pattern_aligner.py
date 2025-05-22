@@ -59,24 +59,74 @@ class WeeklyPattern:
             plt.tight_layout()
             plt.show()
 
-    def get_pattern(self, start_idx, end_index):
+    def get_pattern(self, start_idx, end_index, base_pattern=None):
         """
         [start_idx, end_index) -> [end_index - start_idx, D]
         """
+        if base_pattern is None:
+            base_pattern = self.mean_pattern
+
         start_b, start_i = start_idx // self.points_per_week, start_idx % self.points_per_week
         end_b, end_i = end_index // self.points_per_week, end_index % self.points_per_week
         if start_b == end_b:
-            return self.mean_pattern[start_i:end_i]
+            return base_pattern[start_i:end_i]
         elif start_b + 1 == end_b:
-            pattern = np.concatenate([self.mean_pattern[start_i:], self.mean_pattern[:end_i]], axis=0)
+            pattern = np.concatenate([base_pattern[start_i:], base_pattern[:end_i]], axis=0)
             return pattern
         else:
             repeat = end_b - start_b - 1
-            start_part = self.mean_pattern[start_i:]
-            middle_part = np.tile(self.mean_pattern, (repeat, 1))
-            end_part = self.mean_pattern[:end_i]
+            start_part = base_pattern[start_i:]
+            middle_part = np.tile(base_pattern, (repeat, 1))
+            end_part = base_pattern[:end_i]
             pattern = np.concatenate([start_part, middle_part, end_part], axis=0)
             return pattern
+        
+    def get_pattern_with_input(self, input_data, s_i, s_j, s_k, alpha=0.5):
+        """
+        结合全局周模式和当前输入数据的局部特征，生成混合模式预测
+        
+        参数:
+            input_data: [s_j - s_i, D] 输入序列数据
+            s_i: 输入数据的开始索引
+            s_j: 输入数据的结束索引（同时也是预测的开始索引）
+            s_k: 预测的结束索引
+            alpha: 混合参数，控制全局模式和局部模式的权重，范围[0,1]
+                alpha=1 表示只使用全局模式，alpha=0 表示只使用局部模式
+        
+        返回:
+            混合的模式预测 [s_k - s_j, D]
+        """
+        input_length = input_data.shape[0]
+
+        # get global pattern
+        global_pattern = self.get_pattern(s_j, s_k)
+        # scale to input (mean, std)
+        last_num = int(self.points_per_week * 1.0)
+        in_mean, in_std = input_data[-last_num:].mean(axis=0), input_data[-last_num:].std(axis=0) + 1e-6
+        global_pattern = global_pattern * in_std + in_mean
+        
+        # check
+        expected_length = s_j - s_i
+        if input_data.shape[0] != expected_length:
+            raise ValueError(f"输入数据长度 {input_data.shape[0]} 与预期长度 {expected_length} 不符")
+        
+        
+        assert input_length >= self.points_per_week, f"输入数据长度 {input_length} 小于每周点数 {self.points_per_week}"
+        
+        # calc local_pattern [points_per_week, D]
+        local_pattern = np.zeros((self.points_per_week, input_data.shape[1]))
+        num_repeats = input_length // self.points_per_week
+        for i in range(num_repeats * self.points_per_week):
+            local_pattern[(s_i + i) % self.points_per_week] += input_data[i]
+        local_pattern /= num_repeats
+
+        local_pattern = self.get_pattern(s_j, s_k, local_pattern)
+        # print("local pattern shape", local_pattern.shape)
+        # print("global pattern shape", global_pattern.shape)
+        # mix
+        mixed_pattern = alpha * global_pattern + (1 - alpha) * local_pattern
+        
+        return mixed_pattern
 
     def transform(self, data, start_idx, end_index):
         """
