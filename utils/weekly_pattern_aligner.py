@@ -1,17 +1,49 @@
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 
+def gaussian_kernel(size: int, sigma: float):
+    """
+    生成一维高斯核
+    """
+    x = np.arange(-size // 2 + 1, size // 2 + 1)
+    kernel = np.exp(-x**2 / (2 * sigma**2))
+    kernel = kernel / kernel.sum()
+    return kernel
+    
+def gaussian_filter_nd(data: np.ndarray, kernel_size=5, sigma=1.0):
+    """
+    对 [N, D] 的数据逐列做高斯滤波
+    """
+    kernel = gaussian_kernel(kernel_size, sigma)
+    padding = kernel_size // 2
+    smoothed = np.zeros_like(data)
+
+    # 对每一列做一维卷积（边缘填充）
+    for d in range(data.shape[1]):
+        padded = np.pad(data[:, d], pad_width=padding, mode='reflect')
+        smoothed[:, d] = np.convolve(padded, kernel, mode='valid')
+    
+    return smoothed
+
 class WeeklyPattern:
-    def __init__(self, points_per_week=168, normalize_by_week=False):
+    def __init__(self, points_per_week=168, normalize_by_week=True, gauss_filter=True, kernel_size=7, sigma=2.3):
+        
         self.points_per_week = points_per_week
         self.normalize_by_week = normalize_by_week
         self.mean_pattern = None  # [points_per_week, D]
         self.std_pattern = None   # [points_per_week, D]
+        self.gauss_filter = gauss_filter
+        self.kernel_size = kernel_size
+        self.sigma = sigma
 
-    def fit(self, data):  # data: [N, D] np.ndarray
+
+    def fit(self, data):  # data: [N, D]
         N, D = data.shape
         num_weeks = N // self.points_per_week
         data = data[:num_weeks * self.points_per_week]  # truncate to full weeks
+        if self.gauss_filter:
+            data = gaussian_filter_nd(data, kernel_size=self.kernel_size, sigma=self.sigma) # 高斯平滑
         weekly = data.reshape(num_weeks, self.points_per_week, D)  # [W, points_per_week, D]
 
         if self.normalize_by_week:
@@ -80,7 +112,7 @@ class WeeklyPattern:
             end_part = base_pattern[:end_i]
             pattern = np.concatenate([start_part, middle_part, end_part], axis=0)
             return pattern
-        
+
     def get_pattern_with_input(self, input_data, s_i, s_j, s_k, alpha=0.5):
         """
         结合全局周模式和当前输入数据的局部特征，生成混合模式预测
@@ -121,6 +153,7 @@ class WeeklyPattern:
         local_pattern /= num_repeats
 
         local_pattern = self.get_pattern(s_j, s_k, local_pattern)
+        local_pattern = gaussian_filter_nd(local_pattern, kernel_size=self.kernel_size, sigma=self.sigma) # 高斯平滑
         # print("local pattern shape", local_pattern.shape)
         # print("global pattern shape", global_pattern.shape)
         # mix
@@ -147,9 +180,28 @@ class WeeklyPattern:
         return data + pat
     
     def save(self, path):
+        # save patterns
         np.savez(path, mean_pattern=self.mean_pattern, std_pattern=self.std_pattern)
+        # save parameters
+        params = {
+            "points_per_week": self.points_per_week,
+            "normalize_by_week": self.normalize_by_week,
+            "gauss_filter": self.gauss_filter,
+            "kernel_size": self.kernel_size,
+            "sigma": self.sigma
+        }
+        with open(path + '.json', 'w') as f:
+            json.dump(params, f)
 
     def load(self, path):
         data = np.load(path)
         self.mean_pattern = data['mean_pattern']
         self.std_pattern = data['std_pattern']
+        # load parameters
+        with open(path + '.json', 'r') as f:
+            params = json.load(f)
+            self.points_per_week = params['points_per_week']
+            self.normalize_by_week = params['normalize_by_week']
+            self.gauss_filter = params['gauss_filter']
+            self.kernel_size = params['kernel_size']
+            self.sigma = params['sigma']
