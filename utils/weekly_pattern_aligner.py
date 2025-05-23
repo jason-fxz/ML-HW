@@ -113,7 +113,7 @@ class WeeklyPattern:
             pattern = np.concatenate([start_part, middle_part, end_part], axis=0)
             return pattern
 
-    def get_pattern_with_input(self, input_data, s_i, s_j, s_k, alpha=0.5):
+    def get_pattern_with_input(self, input_data, s_i, s_j, s_k, alpha=1):
         """
         结合全局周模式和当前输入数据的局部特征，生成混合模式预测
         
@@ -133,7 +133,7 @@ class WeeklyPattern:
         # get global pattern
         global_pattern = self.get_pattern(s_j, s_k)
         # scale to input (mean, std)
-        last_num = int(self.points_per_week * 1.0)
+        last_num = input_length
         in_mean, in_std = input_data[-last_num:].mean(axis=0), input_data[-last_num:].std(axis=0) + 1e-6
         global_pattern = global_pattern * in_std + in_mean
         
