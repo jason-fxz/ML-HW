@@ -2,3 +2,6 @@ checkpoints/
 results/
 datasets/
 !datasets/.keep
+# python
+__pycache__/
+*.py[cod]
