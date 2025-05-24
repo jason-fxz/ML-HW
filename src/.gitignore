@@ -5,3 +5,5 @@
 *.pdf
 
 *.gz
+*.bbl
+*.blg

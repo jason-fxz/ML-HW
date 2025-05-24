@@ -1,9 +1,93 @@
+@inproceedings{crossformer2023,
+  title = {Crossformer: {{Transformer Utilizing Cross-Dimension Dependency}} for {{Multivariate Time Series Forecasting}}},
+  shorttitle = {Crossformer},
+  booktitle = {The {{Eleventh International Conference}} on {{Learning Representations}}},
+  author = {Zhang, Yunhao and Yan, Junchi},
+  year = {2022},
+  month = sep,
+  urldate = {2025-05-10},
+  abstract = {Recently many deep models have been proposed for multivariate time series (MTS) forecasting. In particular, Transformer-based models have shown great potential because they can capture long-term dependency. However, existing Transformer-based models mainly focus on modeling the temporal dependency (cross-time dependency) yet often omit the dependency among different variables (cross-dimension dependency), which is critical for MTS forecasting. To fill the gap, we propose Crossformer, a Transformer-based model utilizing cross-dimension dependency for MTS forecasting. In Crossformer, the input MTS is embedded into a 2D vector array through the Dimension-Segment-Wise (DSW) embedding to preserve time and dimension information. Then the Two-Stage Attention (TSA) layer is proposed to efficiently capture the cross-time and cross-dimension dependency. Utilizing DSW embedding and TSA layer, Crossformer establishes a Hierarchical Encoder-Decoder (HED) to use the information at different scales for the final forecasting. Extensive experimental results on six real-world datasets show the effectiveness of Crossformer against previous state-of-the-arts.},
+  langid = {english},
+  keywords = {readed,reading},
+  file = {/home/jasonfan/Zotero/storage/FIVXFNFX/Zhang和Yan - 2022 - Crossformer Transformer Utilizing Cross-Dimension Dependency for Multivariate Time Series Forecasti.pdf}
+}
 
-#Resnet原始论文
-@inproceedings{he2016deep,
-  title     = {Deep residual learning for image recognition},
-  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
-  booktitle = {Proceedings of the IEEE conference on computer vision and pattern recognition},
-  pages     = {770--778},
-  year      = {2016}
+
+@inproceedings{kim2022reversible,
+  title = {Reversible {{Instance Normalization}} for {{Accurate Time-Series Forecasting}} against {{Distribution Shift}}},
+  booktitle = {International {{Conference}} on {{Learning Representations}}},
+  author = {Kim, Taesung and Kim, Jinhee and Tae, Yunwon and Park, Cheonbok and Choi, Jang-Ho and Choo, Jaegul},
+  year = {2021},
+  month = oct,
+  urldate = {2025-05-23},
+  abstract = {Statistical properties such as mean and variance often change over time in time series, i.e., time-series data suffer from a distribution shift problem. This change in temporal distribution is one of the main challenges that prevent accurate time-series forecasting. To address this issue, we propose a simple yet effective normalization method called reversible instance normalization (RevIN), a generally-applicable normalization-and-denormalization method with learnable affine transformation. The proposed method is symmetrically structured to remove and restore the statistical information of a time-series instance, leading to significant performance improvements in time-series forecasting, as shown in Fig. 1. We demonstrate the effectiveness of RevIN via extensive quantitative and qualitative analyses on various real-world datasets, addressing the distribution shift problem.},
+  langid = {english},
+  file = {/home/jasonfan/Zotero/storage/5BCVC4U9/Kim 等 - 2021 - Reversible Instance Normalization for Accurate Time-Series Forecasting against Distribution Shift.pdf}
+}
+
+@misc{zhou2021informer,
+  title = {Informer: {{Beyond Efficient Transformer}} for {{Long Sequence Time-Series Forecasting}}},
+  shorttitle = {Informer},
+  author = {Zhou, Haoyi and Zhang, Shanghang and Peng, Jieqi and Zhang, Shuai and Li, Jianxin and Xiong, Hui and Zhang, Wancai},
+  year = {2021},
+  month = mar,
+  number = {arXiv:2012.07436},
+  eprint = {2012.07436},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2012.07436},
+  urldate = {2025-05-24},
+  abstract = {Many real-world applications require the prediction of long sequence time-series, such as electricity consumption planning. Long sequence time-series forecasting (LSTF) demands a high prediction capacity of the model, which is the ability to capture precise long-range dependency coupling between output and input efficiently. Recent studies have shown the potential of Transformer to increase the prediction capacity. However, there are several severe issues with Transformer that prevent it from being directly applicable to LSTF, including quadratic time complexity, high memory usage, and inherent limitation of the encoder-decoder architecture. To address these issues, we design an efficient transformer-based model for LSTF, named Informer, with three distinctive characteristics: (i) a \$ProbSparse\$ self-attention mechanism, which achieves \$O(L {\textbackslash}log L)\$ in time complexity and memory usage, and has comparable performance on sequences' dependency alignment. (ii) the self-attention distilling highlights dominating attention by halving cascading layer input, and efficiently handles extreme long input sequences. (iii) the generative style decoder, while conceptually simple, predicts the long time-series sequences at one forward operation rather than a step-by-step way, which drastically improves the inference speed of long-sequence predictions. Extensive experiments on four large-scale datasets demonstrate that Informer significantly outperforms existing methods and provides a new solution to the LSTF problem.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Information Retrieval,Computer Science - Machine Learning},
+  file = {/home/jasonfan/Zotero/storage/UH5TUS5F/Zhou 等 - 2021 - Informer Beyond Efficient Transformer for Long Sequence Time-Series Forecasting.pdf;/home/jasonfan/Zotero/storage/PUPA6WIE/2012.html}
+}
+
+@misc{zhou2022fedformer,
+  title = {{{FEDformer}}: {{Frequency Enhanced Decomposed Transformer}} for {{Long-term Series Forecasting}}},
+  shorttitle = {{{FEDformer}}},
+  author = {Zhou, Tian and Ma, Ziqing and Wen, Qingsong and Wang, Xue and Sun, Liang and Jin, Rong},
+  year = {2022},
+  month = jun,
+  number = {arXiv:2201.12740},
+  eprint = {2201.12740},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2201.12740},
+  urldate = {2025-05-24},
+  abstract = {Although Transformer-based methods have significantly improved state-of-the-art results for long-term series forecasting, they are not only computationally expensive but more importantly, are unable to capture the global view of time series (e.g. overall trend). To address these problems, we propose to combine Transformer with the seasonal-trend decomposition method, in which the decomposition method captures the global profile of time series while Transformers capture more detailed structures. To further enhance the performance of Transformer for long-term prediction, we exploit the fact that most time series tend to have a sparse representation in well-known basis such as Fourier transform, and develop a frequency enhanced Transformer. Besides being more effective, the proposed method, termed as Frequency Enhanced Decomposed Transformer (\{{\textbackslash}bf FEDformer\}), is more efficient than standard Transformer with a linear complexity to the sequence length. Our empirical studies with six benchmark datasets show that compared with state-of-the-art methods, FEDformer can reduce prediction error by \$14.8{\textbackslash}\%\$ and \$22.6{\textbackslash}\%\$ for multivariate and univariate time series, respectively. Code is publicly available at https://github.com/MAZiqing/FEDformer.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,Statistics - Machine Learning},
+  file = {/home/jasonfan/Zotero/storage/YBXZPCUF/Zhou 等 - 2022 - FEDformer Frequency Enhanced Decomposed Transformer for Long-term Series Forecasting.pdf}
+}
+
+@misc{wu2021autoformer,
+  title = {Autoformer: {{Decomposition Transformers}} with {{Auto-Correlation}} for {{Long-Term Series Forecasting}}},
+  shorttitle = {Autoformer},
+  author = {Wu, Haixu and Xu, Jiehui and Wang, Jianmin and Long, Mingsheng},
+  year = {2022},
+  month = jan,
+  number = {arXiv:2106.13008},
+  eprint = {2106.13008},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2106.13008},
+  urldate = {2025-05-24},
+  abstract = {Extending the forecasting time is a critical demand for real applications, such as extreme weather early warning and long-term energy consumption planning. This paper studies the long-term forecasting problem of time series. Prior Transformer-based models adopt various self-attention mechanisms to discover the long-range dependencies. However, intricate temporal patterns of the long-term future prohibit the model from finding reliable dependencies. Also, Transformers have to adopt the sparse versions of point-wise self-attentions for long series efficiency, resulting in the information utilization bottleneck. Going beyond Transformers, we design Autoformer as a novel decomposition architecture with an Auto-Correlation mechanism. We break with the pre-processing convention of series decomposition and renovate it as a basic inner block of deep models. This design empowers Autoformer with progressive decomposition capacities for complex time series. Further, inspired by the stochastic process theory, we design the Auto-Correlation mechanism based on the series periodicity, which conducts the dependencies discovery and representation aggregation at the sub-series level. Auto-Correlation outperforms self-attention in both efficiency and accuracy. In long-term forecasting, Autoformer yields state-of-the-art accuracy, with a 38\% relative improvement on six benchmarks, covering five practical applications: energy, traffic, economics, weather and disease. Code is available at this repository: {\textbackslash}url\{https://github.com/thuml/Autoformer\}.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning},
+  file = {/home/jasonfan/Zotero/storage/LSJFS2PM/Wu 等 - 2022 - Autoformer Decomposition Transformers with Auto-Correlation for Long-Term Series Forecasting.pdf;/home/jasonfan/Zotero/storage/NR562ZV8/2106.html}
+}
+
+@article{cleveland1990stl,
+  title = {{{STL}}: {{A}} Seasonal-Trend Decomposition},
+  shorttitle = {{{STL}}},
+  author = {Cleveland, Robert B. and Cleveland, William S. and McRae, Jean E. and Terpenning, Irma},
+  year = {1990},
+  journal = {J. off. Stat},
+  volume = {6},
+  number = {1},
+  pages = {3--73},
+  urldate = {2025-05-24},
+  file = {/home/jasonfan/Zotero/storage/WHWP2NVX/Cleveland 等 - 1990 - STL A seasonal-trend decomposition.pdf}
 }

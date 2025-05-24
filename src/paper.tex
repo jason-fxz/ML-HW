@@ -46,7 +46,7 @@
 
 
 \author{
-  Your Name
+  Xiaoze Fan
 }
 
 
@@ -57,28 +57,94 @@
 
 
 \begin{abstract}
-The paper structure is only for reference.
+Multivariate time-series forecasting models are often challenged by distribution shifts across time, especially when training and testing data come from different seasonal periods. This paper investigates the robustness of Crossformer, a recent transformer-based model for long-term time-series forecasting, under such distribution shifts. We analyze the ETT and ECL datasets and observe significant distribution changes in their test sets compared to training. To mitigate this, we introduce two improvements: (1) integrating Reversible Instance Normalization (RevIN) to adaptively normalize inputs; and (2) extracting and removing weekly periodic patterns using a statistical smoothing method. Experiments show that these enhancements significantly reduce systematic bias and improve prediction accuracy across multiple settings.
 \end{abstract}
+
 
 
 \section{Introduction}
 
+Multivariate time-series forecasting plays a vital role in many real-world applications, such as energy consumption prediction, traffic flow monitoring, and financial analysis. A key challenge in this domain is the presence of \textbf{distribution shift} — where the test data distribution differs from the training data — which can significantly degrade forecasting performance.
+
+Recent works, such as Crossformer~\cite{crossformer2023}, have proposed transformer-based models that exploit cross-dimensional dependencies to improve long-term forecasting accuracy. However, through detailed data analysis on benchmarks like ETT (Electricity Transformer Temperature) and ECL (Electricity Consumption Load), we observe that these models suffer from \textbf{systematic prediction bias}, especially when test sets are drawn from months not covered in the training set. For instance, training data often spans only a year, while the testing period may come from distinct seasonal segments, leading to poor generalization.
+
+To address this, we explore two sequential improvements to Crossformer:
+
+\begin{itemize}
+    \item First, we integrate \textbf{Reversible Instance Normalization (RevIN)}~\cite{kim2022reversible}, a simple yet effective technique to normalize each instance, and observe consistent gains on distribution-shifted benchmarks.
+    \item Motivated by the seasonal nature of the data, we further propose a novel \textbf{Weekly Pattern Residual Learning (WPRL)} strategy that explicitly removes recurring weekly patterns from the input via statistical smoothing. Inspired by RevIN, WPRL rescales the extracted patterns to match the scale of input segments, ensuring stable training and improved residual learning.
+\end{itemize}
+
+We validate these improvements on the ETT and ECL datasets. While RevIN alone already improves performance under distribution shift, WPRL offers a more interpretable and structure-aware alternative that explicitly captures and removes weekly bias. Our contributions are summarized as follows:
+
+\begin{itemize}
+    \item We identify and analyze temporal distribution shifts in common long-term forecasting benchmarks and show that they lead to biased predictions in Crossformer.
+    \item We verify that RevIN improves Crossformer’s robustness to distribution shift, without modifying its architecture.
+    \item We propose Weekly Pattern Residual Learning (WPRL), a statistical method to extract and remove weekly seasonality, enabling the model to focus on learning non-periodic fluctuations.
+    \item We demonstrate experimentally that both RevIN and WPRL can independently improve performance, with WPRL being particularly effective in reducing systematic prediction bias.
+\end{itemize}
+
+
+
 
 \section{Related Work}
+
+\subsection{Transformer-based Time Series Forecasting}
+
+Transformer architectures have been extensively studied for time-series forecasting due to their ability to model long-range dependencies. Notable examples include Informer~\cite{zhou2021informer}, Autoformer~\cite{wu2021autoformer}, and FEDformer~\cite{zhou2022fedformer}. Crossformer~\cite{crossformer2023}, the foundation of our work, introduces a Two-Stage Attention mechanism that separately captures local and cross-dimensional correlations. By patching the temporal axis and attending across variable dimensions, Crossformer improves multivariate forecasting. However, it lacks explicit mechanisms to handle distribution shifts or temporal seasonality, making it vulnerable to prediction bias when the test distribution deviates from the training distribution.
+
+\subsection{Normalization and Distribution Shift}
+
+A common practice in time-series forecasting is to normalize the input data using the mean and standard deviation of the training set. This global normalization assumes a stationary distribution, which does not hold under distribution shift. Consequently, the test data may be poorly scaled, leading to biased predictions. Reversible Instance Normalization (RevIN)~\cite{kim2022reversible} addresses this issue by normalizing each sample individually using its own statistics and applying a learnable affine transformation. This simple yet effective technique allows models to better handle distribution changes between training and testing phases, without altering the model architecture. Our work first integrates RevIN into Crossformer and further adapts its principle when constructing residuals in weekly pattern removal.
+
+\subsection{Statistical Seasonality Modeling}
+
+Many real-world time series exhibit strong seasonal patterns (e.g., daily, weekly). Prior works have leveraged seasonal decomposition~\cite{cleveland1990stl}, Fourier or frequency-domain representations~\cite{wu2021autoformer}, or seasonal attention mechanisms~\cite{zhou2022fedformer} to model such components. These methods typically aim to isolate periodic structures from residual signals, allowing the model to focus on less predictable components. Our proposed Weekly Pattern Residual Learning (WPRL) continues this line of work from a statistical perspective, using smoothed weekly averages as explicit bias terms subtracted from the input and output. This approach is model-agnostic and can be combined with any backbone architecture.
+
 
 
 \section{Method}
 
-ResNet-50 \cite{he2016deep}.
+In this section, we first integrate Reversible Instance Normalization (RevIN) into Crossformer to improve robustness under distribution shifts. Then, we introduce Weekly Pattern Residual Learning (WPRL), a model-agnostic statistical technique that extracts and removes periodic bias from both input and output sequences before feeding them into the forecasting model.
 
-\subsection{Baseline}
+\subsection{RevIN-enhanced Crossformer}
 
-\begin{figure}[H] %H为当前位置，!htb为忽略美学标准，htbp为浮动图形
-    \centering %图片居中
-    \includegraphics[width=0.5\textwidth]{image.png} %插入图片，[]中设置图片大小，{}中是图片文件名
-    \caption{Resnet} %最终文档中希望显示的图片标题
-    \label{Fig.img1} %用于文内引用的标签
-\end{figure}
+RevIN~\cite{kim2022reversible} normalizes each sample independently by subtracting its own mean and dividing by its own standard deviation, followed by a learnable affine transformation. This helps the model remain invariant to global distribution shifts between training and test time.
+
+To incorporate RevIN into Crossformer, we apply instance-wise normalization over each variable dimension before feeding the sequence into the model. During inference, the output is renormalized using the stored statistics and the learned scale/shift. This modification is architecture-agnostic and requires minimal changes to the Crossformer implementation.
+
+\subsection{Weekly Pattern Residual Learning (WPRL)}
+
+To further reduce systematic prediction errors caused by misalignment of periodic structures (e.g., weekly seasonality), we propose Weekly Pattern Residual Learning (WPRL).
+
+\paragraph{Pattern Extraction.}
+We use a sliding window of 7 days over the training data to compute the average value at each weekly time slot (e.g., Monday 9:00, Tuesday 14:30, etc.). This yields a weekly pattern matrix $P$ with the same temporal resolution as the input.
+
+To reduce the effect of noise and distributional variance, we apply the following steps:
+\begin{itemize}
+    \item Normalize weekly values across weeks using per-slot mean and standard deviation;
+    \item Apply Gaussian smoothing to suppress high-frequency fluctuations.
+\end{itemize}
+
+\paragraph{Residual Construction.}
+Let $x_{in}$ and $x_{out}$ denote the input and output sequences. We extract the corresponding weekly patterns $p_{in}, p_{out}$ by aligning the weekly pattern $P$ with the timestamps of each input/output window. Following the spirit of RevIN, we re-scale the patterns by the instance statistics $(\mu, \sigma)$ of $x_{in}$:
+\[
+\tilde{p}_{in} = p_{in} \cdot \sigma + \mu, \quad \tilde{p}_{out} = p_{out} \cdot \sigma + \mu.
+\]
+
+We then subtract these scaled patterns:
+\[
+x_{in}^{\text{res}} = x_{in} - \tilde{p}_{in}, \quad x_{out}^{\text{res}} = x_{out} - \tilde{p}_{out}.
+\]
+The model is trained on the residuals $x^{\text{res}}$, and the predicted output is re-centered using the pattern:
+\[
+\hat{x}_{out} = \hat{x}_{out}^{\text{res}} + \tilde{p}_{out}.
+\]
+
+\paragraph{Model-Agnostic Nature.}
+WPRL can be applied as a preprocessing step to any forecasting model. In this work, we use it to augment Crossformer, but the approach generalizes to other architectures such as Informer or DLinear.
+
+
 
 \subsection{Ablation}
 
