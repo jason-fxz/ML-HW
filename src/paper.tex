@@ -40,7 +40,9 @@
 \usepackage{subfigure} %插入多图时用子图显示的宏包
 \usepackage{amsmath}
 
-
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{ulem} % for \uline (underline in text mode)
 
 \title{CS3308 Machine Learning Homework Project}
 
@@ -57,7 +59,7 @@
 
 
 \begin{abstract}
-Multivariate time-series forecasting models are often challenged by distribution shifts across time, especially when training and testing data come from different seasonal periods. This paper investigates the robustness of Crossformer, a recent transformer-based model for long-term time-series forecasting, under such distribution shifts. We analyze the ETT and ECL datasets and observe significant distribution changes in their test sets compared to training. To mitigate this, we introduce two improvements: (1) integrating Reversible Instance Normalization (RevIN) to adaptively normalize inputs; and (2) extracting and removing weekly periodic patterns using a statistical smoothing method. Experiments show that these enhancements significantly reduce systematic bias and improve prediction accuracy across multiple settings.
+Multivariate time-series forecasting models often suffer from performance degradation due to distribution shifts, especially when training and testing periods differ in seasonal structure. In this work, we analyze such challenges on ETT and ECL datasets using Crossformer, a recent transformer-based forecasting model, and observe systematic prediction bias in the presence of temporal drift. To mitigate this, we first incorporate Reversible Instance Normalization (RevIN), an instance-wise normalization strategy shown to improve robustness under distribution shift. Building upon this, we propose Weekly Pattern Residual Learning (WPRL), a statistical method that extracts and removes weekly seasonality from both input and output sequences, enabling the model to focus on residual, non-periodic patterns. Experiments show that both RevIN and WPRL improve performance across multiple forecast horizons, with WPRL achieving particularly strong gains in long-term settings. Our findings highlight the importance of explicitly addressing periodic structure and input distribution mismatch in time-series modeling.
 \end{abstract}
 
 
@@ -115,44 +117,102 @@ To incorporate RevIN into Crossformer, we apply instance-wise normalization over
 
 \subsection{Weekly Pattern Residual Learning (WPRL)}
 
-To further reduce systematic prediction errors caused by misalignment of periodic structures (e.g., weekly seasonality), we propose Weekly Pattern Residual Learning (WPRL).
+While RevIN improves robustness to distribution shift, it does not explicitly disentangle structured temporal patterns from dynamic variations. Motivated by the strong weekly seasonality observed in datasets like ETT and ECL, we propose Weekly Pattern Residual Learning (WPRL), a statistical framework to extract and remove average periodic structure from the input and output. This encourages the forecasting model to focus on residual fluctuations, enhancing its ability to model finer-scale dynamics.
+
+\paragraph{Motivation.}
+In many real-world time series, long-term variation is dominated by low-frequency seasonal components (e.g., weekly energy consumption rhythms). Directly feeding such signals into deep models may lead to overfitting the global trend and under-utilizing capacity for modeling residual deviations. By removing the average weekly pattern, WPRL isolates higher-frequency, non-periodic components, thereby shifting the model's focus to localized temporal behaviors.
 
 \paragraph{Pattern Extraction.}
-We use a sliding window of 7 days over the training data to compute the average value at each weekly time slot (e.g., Monday 9:00, Tuesday 14:30, etc.). This yields a weekly pattern matrix $P$ with the same temporal resolution as the input.
-
-To reduce the effect of noise and distributional variance, we apply the following steps:
+We compute a smoothed weekly average pattern using training data:
 \begin{itemize}
-    \item Normalize weekly values across weeks using per-slot mean and standard deviation;
-    \item Apply Gaussian smoothing to suppress high-frequency fluctuations.
+    \item A sliding 7-day window is used to compute average values at each weekly timestamp slot (e.g., Monday 9am, Tuesday 2pm);
+    \item For each weekly slot, we normalize the sequence across weeks (mean-zero, std-one), mitigating weekly-level drift;
+    \item Gaussian smoothing is applied to reduce high-frequency noise.
 \end{itemize}
+The resulting pattern $P$ captures the dominant weekly structure in a denoised, standardized form.
 
 \paragraph{Residual Construction.}
-Let $x_{in}$ and $x_{out}$ denote the input and output sequences. We extract the corresponding weekly patterns $p_{in}, p_{out}$ by aligning the weekly pattern $P$ with the timestamps of each input/output window. Following the spirit of RevIN, we re-scale the patterns by the instance statistics $(\mu, \sigma)$ of $x_{in}$:
+Given a sample input-output pair $(x_{in}, x_{out})$, we align the weekly pattern to obtain $(p_{in}, p_{out})$. Inspired by RevIN, we scale the normalized pattern back to the local instance scale using statistics from $x_{in}$:
 \[
-\tilde{p}_{in} = p_{in} \cdot \sigma + \mu, \quad \tilde{p}_{out} = p_{out} \cdot \sigma + \mu.
+\tilde{p}_{in} = p_{in} \cdot \sigma + \mu, \quad \tilde{p}_{out} = p_{out} \cdot \sigma + \mu,
 \]
+where $\mu, \sigma$ are the mean and standard deviation of $x_{in}$.
 
-We then subtract these scaled patterns:
+We then define the residual input and supervision target as:
 \[
 x_{in}^{\text{res}} = x_{in} - \tilde{p}_{in}, \quad x_{out}^{\text{res}} = x_{out} - \tilde{p}_{out}.
 \]
-The model is trained on the residuals $x^{\text{res}}$, and the predicted output is re-centered using the pattern:
+
+The model is trained on $(x_{in}^{\text{res}}, x_{out}^{\text{res}})$, and during inference the predicted residual $\hat{x}_{out}^{\text{res}}$ is added back to the scaled pattern:
 \[
 \hat{x}_{out} = \hat{x}_{out}^{\text{res}} + \tilde{p}_{out}.
 \]
 
-\paragraph{Model-Agnostic Nature.}
-WPRL can be applied as a preprocessing step to any forecasting model. In this work, we use it to augment Crossformer, but the approach generalizes to other architectures such as Informer or DLinear.
-
-
-
-\subsection{Ablation}
+% \paragraph{Advantages.}
+% WPRL improves model capacity by removing strong periodic biases that might dominate learning. It is implemented entirely at the data preprocessing level and is therefore model-agnostic. In this work, we apply WPRL to Crossformer and demonstrate consistent gains in accuracy.
 
 \section{Experiments}
 
+\subsection{Experimental Setup}
+
+We follow the experimental protocol used in the original Crossformer paper \cite{crossformer2023}. All input sequences are normalized using the training set mean and standard deviation.
+
+We evaluate models on three forecast horizons per dataset (e.g., $L=168$, $336$, $720$ for ETTh1) using two standard metrics:
+\begin{itemize}
+\item \textbf{MSE} (Mean Squared Error)
+\item \textbf{MAE} (Mean Absolute Error)
+\end{itemize}
+
+Each model is trained from scratch using the same configuration as in the official Crossformer codebase, ensuring fair comparison.
+
+\subsection{Main Results}
+
+\begin{table}[H]
+\centering
+\caption{Forecasting results (MSE / MAE) on ETTh1 and ECL. Lower is better. Best results in \textbf{bold}, second-best \uline{underlined}.}
+\label{tab:ours}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llccc}
+\toprule
+\textbf{Dataset} & \textbf{Horizon} & \textbf{Baseline} & \textbf{+ RevIN} & \textbf{+ WPRL (Ours)} \\
+\midrule
+
+\multirow{3}{*}{ETTh1} 
+& 168 & 0.409 / 0.443 & \textbf{0.397} / \textbf{0.422} & \uline{0.402} / \uline{0.427} \\
+& 336 & 0.440 / 0.461 & \uline{0.429} / \uline{0.446} & \textbf{0.426} / \textbf{0.445} \\
+& 720 & 0.521 / 0.523 & \uline{0.475} / \uline{0.482} & \textbf{0.460} / \textbf{0.481} \\
+\midrule
+
+\multirow{3}{*}{ECL}
+& 336 & 0.323 / 0.369 & \uline{0.264} / \uline{0.331} & \textbf{0.243} / \textbf{0.320} \\
+& 720 & 0.404 / 0.423 & \uline{0.319} / \uline{0.376} & \textbf{0.278} / \textbf{0.350} \\
+& 960 & 0.433 / 0.438 & \uline{0.343} / \uline{0.397} & \textbf{0.304} / \textbf{0.365} \\
+
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Analysis}
+
+We observe consistent improvements from both RevIN and WPRL across all settings. RevIN effectively reduces error under distribution shift, while WPRL further enhances accuracy by decoupling periodic patterns from residual signals, enabling the model to focus on finer details.
+
+Interestingly, on shorter horizons (e.g., $L=168$ on ETTh1), WPRL slightly underperforms RevIN and remains close to the baseline. This may be because weekly patterns are not fully developed within short windows, reducing the benefit of explicit pattern removal. In contrast, for longer horizons, WPRL consistently achieves the best results, highlighting its strength in long-term forecasting where capturing systematic periodicity becomes more critical.
+
 \section{Conclusion}
 
+In this work, we investigated the challenges posed by distribution shift and strong seasonal structures in long-term time series forecasting. We first introduced Reversible Instance Normalization (RevIN) into Crossformer, showing that instance-wise normalization effectively improves robustness under temporal distribution drift. Building upon this insight, we further proposed Weekly Pattern Residual Learning (WPRL) — a lightweight, model-agnostic method that explicitly removes weekly periodic bias from both input and output sequences, enabling the model to better focus on residual, non-periodic dynamics.
+
+Experiments on ETTh1 and ECL datasets demonstrate that RevIN and WPRL each improve performance, with WPRL achieving particularly strong results in long-horizon settings. These findings highlight the value of incorporating prior knowledge of temporal structure into forecasting models.
+
+\paragraph{Limitation.}
+
+Despite its effectiveness, WPRL has several limitations. It assumes the existence of stable weekly patterns, which may not generalize to datasets with limited training length, irregular timestamps, or weak seasonality. Moreover, in shorter prediction horizons (e.g., $L=168$ on ETTh1), WPRL may cause slight performance degradation, potentially due to over-removal of relevant low-frequency trends. Finally, the current method assumes a fixed weekly periodicity; generalizing to adaptive or multi-scale seasonal structures remains an important direction for future work.
+
 \section*{Acknowledgements}
+
+This work was conducted as part of the final project for CS3308: Machine Learning. We would like to thank the course instructors and teaching assistants for their guidance. We also sincerely thank \textbf{DarkSharpness} for providing valuable insights and discussions that helped shape the direction of this work.
+
 
 \medskip
 
