@@ -68,8 +68,7 @@ Multivariate time-series forecasting models often suffer from performance degrad
 
 Multivariate time-series forecasting plays a vital role in many real-world applications, such as energy consumption prediction, traffic flow monitoring, and financial analysis. A key challenge in this domain is the presence of \textbf{distribution shift} — where the test data distribution differs from the training data — which can significantly degrade forecasting performance.
 
-Recent works, such as Crossformer~\cite{crossformer2023}, have proposed transformer-based models that exploit cross-dimensional dependencies to improve long-term forecasting accuracy. However, through detailed data analysis on benchmarks like ETT (Electricity Transformer Temperature) and ECL (Electricity Consumption Load), we observe that these models suffer from \textbf{systematic prediction bias}, especially when test sets are drawn from months not covered in the training set. For instance, training data often spans only a year, while the testing period may come from distinct seasonal segments, leading to poor generalization.
-
+Recent works, such as Crossformer~\cite{crossformer2023}, have proposed transformer-based models that exploit cross-dimensional dependencies to improve long-term forecasting accuracy. However, through detailed data analysis on benchmarks like ETT (Electricity Transformer Temperature) and ECL (Electricity Consumption Load), we observe that these models suffer from \textbf{systematic prediction bias}, especially when test sets are drawn from months not covered in the training set. For example, in the ETTh1 dataset, prediction distributions for specific variables (e.g., OT) deviate significantly from the true values (see Figure~\ref{fig:ot-dist-shift}), indicating the model's inability to generalize under distribution drift.
 To address this, we explore two sequential improvements to Crossformer:
 
 \begin{itemize}
@@ -83,10 +82,22 @@ We validate these improvements on the ETT and ECL datasets. While RevIN alone al
     \item We identify and analyze temporal distribution shifts in common long-term forecasting benchmarks and show that they lead to biased predictions in Crossformer.
     \item We verify that RevIN improves Crossformer’s robustness to distribution shift, without modifying its architecture.
     \item We propose Weekly Pattern Residual Learning (WPRL), a statistical method to extract and remove weekly seasonality, enabling the model to focus on learning non-periodic fluctuations.
-    \item We demonstrate experimentally that both RevIN and WPRL can independently improve performance, with WPRL being particularly effective in reducing systematic prediction bias.
+    % \item We demonstrate experimentally that both RevIN and WPRL can independently improve performance, with WPRL being particularly effective in reducing systematic prediction bias.
 \end{itemize}
 
 
+\begin{figure}[H]
+    \centering
+    \subfigure[ETT - Weekly Mean of OT]{
+        \includegraphics[width=0.45\textwidth]{./pic/ETT_weekly_mean.png}
+    }
+    \hfill
+    \subfigure[ECL - Weekly Mean of MT\_003]{
+        \includegraphics[width=0.45\textwidth]{./pic/ECL_weekly_mean.png}
+    }
+    \caption{Weekly mean values over time for ETT and ECL datasets. The clear changes in mean level indicate distribution shift between training and testing periods.}
+    \label{fig:weekly-drift}
+\end{figure}
 
 
 \section{Related Work}
@@ -129,7 +140,25 @@ We compute a smoothed weekly average pattern using training data:
     \item For each weekly slot, we normalize the sequence across weeks (mean-zero, std-one), mitigating weekly-level drift;
     \item Gaussian smoothing is applied to reduce high-frequency noise.
 \end{itemize}
-The resulting pattern $P$ captures the dominant weekly structure in a denoised, standardized form.
+As shown in Figure~\ref{fig:pattern-process}, we begin with raw weekly means computed over a sliding window. Week-wise normalization removes the scale variation across different weeks, and Gaussian smoothing yields a clean, stable periodic signal for subtraction. Finally, the resulting pattern $P$ captures the dominant weekly structure in a denoised, standardized form. 
+
+\begin{figure}[H]
+    \centering
+    \subfigure[Raw weekly mean pattern]{
+        \includegraphics[width=0.31\textwidth]{./pic/pattern_raw.png}
+    }
+    \hfill
+    \subfigure[+ week-wise normalization]{
+        \includegraphics[width=0.31\textwidth]{./pic/pattern_normalized.png}
+    }
+    \hfill
+    \subfigure[+ Gaussian smoothing]{
+        \includegraphics[width=0.31\textwidth]{./pic/pattern_smoothed.png}
+    }
+    \caption{Weekly pattern extraction process. Starting from raw weekly means (left), we perform week-wise normalization (center) to mitigate drift across weeks, and apply Gaussian smoothing (right) to suppress high-frequency noise. The resulting smoothed pattern is used in residual construction.}
+    \label{fig:pattern-process}
+\end{figure}
+
 
 \paragraph{Residual Construction.}
 Given a sample input-output pair $(x_{in}, x_{out})$, we align the weekly pattern to obtain $(p_{in}, p_{out})$. Inspired by RevIN, we scale the normalized pattern back to the local instance scale using statistics from $x_{in}$:
@@ -171,7 +200,8 @@ Each model is trained from scratch using the same configuration as in the offici
 \centering
 \caption{Forecasting results (MSE / MAE) on ETTh1 and ECL. Lower is better. Best results in \textbf{bold}, second-best \uline{underlined}.}
 \label{tab:ours}
-\resizebox{\textwidth}{!}{
+% \resizebox{\textwidth}{!}
+{
 \begin{tabular}{llccc}
 \toprule
 \textbf{Dataset} & \textbf{Horizon} & \textbf{Baseline} & \textbf{+ RevIN} & \textbf{+ WPRL (Ours)} \\
@@ -194,6 +224,24 @@ Each model is trained from scratch using the same configuration as in the offici
 \end{table}
 
 \subsection{Analysis}
+
+\begin{figure}[H]
+    \centering
+    \subfigure[Crossformer (Baseline)]{
+        \includegraphics[width=0.31\textwidth]{./pic/dist_baseline.png}
+    }
+    \hfill
+    \subfigure[+ RevIN]{
+        \includegraphics[width=0.31\textwidth]{./pic/dist_revin.png}
+    }
+    \hfill
+    \subfigure[+ WPRL (Ours)]{
+        \includegraphics[width=0.31\textwidth]{./pic/dist_wprl.png}
+    }
+    \caption{Predicted vs. true value distributions for the OT variable (Dimension 7) in the ETTh1 test set. Predictions from the baseline model (left) show a systematic bias under distribution shift. While Both RevIN and WPRL improves alignment.}
+    \label{fig:ot-dist-shift}
+\end{figure}
+
 
 We observe consistent improvements from both RevIN and WPRL across all settings. RevIN effectively reduces error under distribution shift, while WPRL further enhances accuracy by decoupling periodic patterns from residual signals, enabling the model to focus on finer details.
 
