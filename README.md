@@ -1,11 +1,37 @@
-# ML-HW
-ML Homework
+# CS3308 Machine Learning Homework
 
+Based on the [Crossformer Codebase](https://github.com/Thinklab-SJTU/Crossformer)
 
-baseline: il168_ol24_sl6_win2_fa10_dm256_nh4_el3
-mse:0.2992926836013794, mae:0.362176775932312
-mse:0.30594322085380554, mae:0.3613950312137604
-mse:0.2956047058105469, mae:0.3595590591430664
-mse:0.3001166582107544, mae:0.36411750316619873
-mse:0.29209813475608826, mae:0.35116320848464966
+My codebase [ML-HW](https://github.com/jason-fxz/ML-HW)
 
+branch [paper](https://github.com/jason-fxz/ML-HW/tree/paper) for paper implementation
+
+## Modifications
+
+- `cross_models/RevIN.py` for RevIN implementation
+- `utils/weekly_pattern_aligner` for WPRL implementation
+- some modifications in `main_crossformer.py`,`exp_crossformer.py`,`data_loader.py` to support RevIN and WPRL
+
+## Run experiments
+
+Example commands to run experiments on the ECL dataset using CrossFormer model with different configurations:
+
+```bash
+# baseline 
+python main_crossformer.py --data ECL \
+--in_len 720 --out_len 720 --seg_len 24 \
+--d_model 64 --d_ff 128 --n_heads 2 \
+--learning_rate 5e-5  --lradj fixed  --itr 3
+
+# RevIN 
+python main_crossformer.py --data ECL \
+--in_len 720 --out_len 720 --seg_len 24 \
+--d_model 64 --d_ff 128 --n_heads 2 \
+--learning_rate 5e-5  --lradj fixed  --itr 3 --use_revin --tag RevIN
+
+# WPRL (ours)
+python main_crossformer.py --data ECL \
+--in_len 720 --out_len 720 --seg_len 24 \
+--d_model 64 --d_ff 128 --n_heads 2 \
+--learning_rate 5e-5  --lradj fixed  --itr 3 --use_weekly_pattern --tag WPRL
+```
